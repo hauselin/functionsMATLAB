@@ -20,7 +20,7 @@ end
 
 if size(cfg.designmatrix,1) ~= size(data.fourierspctrm,1) % check if number of trials in design matrix and data match
     if isfield(cfg,'trials') % if selecting trials
-        data.fourierspctrm = data.powspctrm(cfg.trials,:,:,:);
+        data.fourierspctrm = data.fourierspctrm(cfg.trials,:,:,:);
         data.cumtapcnt = data.cumtapcnt(cfg.trials,:);
     else
         error('Trial numbers in design matrix and data do not match!');
