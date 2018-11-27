@@ -143,7 +143,7 @@ try
         return % quit function
     end
 
-    rawFileAbsDirectory = fullfile(rawDataDirectory, filesInRawDirectory(fileIdx).name); % absolute directory path to raw data
+    rawFileAbsDirectory = fullfile(rawDataDirectory,filesInRawDirectory(fileIdx).name); % absolute directory path to raw data
 
     [ALLEEG EEG CURRENTSET ALLCOM] = eeglab; % run eeglab
     % EEG = pop_loadeep(rawFileAbsDirectory,'triggerfile','on'); % read data into MATLAB/eeglab
@@ -194,7 +194,7 @@ try
 
         %% Band pass filter for ICA (ERPLAB filter)
 
-        EEG = pop_basicfilter(EEG,1:length(EEG.chanlocs),'Boundary','boundary','Cutoff',[highPassForICA lowPass],'Design','butter','Filter','bandpass','Order', 2,'RemoveDC', 'on');
+        EEG = pop_basicfilter(EEG,1:length(EEG.chanlocs),'Boundary','boundary','Cutoff',[highPassForICA lowPass],'Design','butter','Filter','bandpass','Order',2,'RemoveDC','on');
         [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG,EEG,1); % modify ALLEEG structure; check consistency; store in dataset1
 
         %% Trim data (ERPLAB function)

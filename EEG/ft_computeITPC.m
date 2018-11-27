@@ -1,4 +1,15 @@
 function [dataout] = ft_computeITPC(cfg,data)
+% Computes ITPC values from single-trial fourier coefficients (output from ft_freqanalysis) 
+% 
+% cfg.trials: which trials to use (default 'all')
+% cfg.avgoverrpt: average trials or not (default 'yes')
+% cfg.itpcz: transform ITPC to ITPCz (deafult 'no')
+% 
+% Usage
+% cfg = [];
+% ft_computeITPC(cfg,data)
+%
+% Written by Hause Lin 14-11-18 21:31 hauselin@gmail.com
 
 %% check input data
 
@@ -8,12 +19,16 @@ else
     data.fourierspctrm = angle(data.fourierspctrm); % get phase angle
 end
 
-if ~isfield(cfg,'trials')
+if ~isfield(cfg,'trials') % select trials
     cfg.trials = 'all';
 end
 
-if ~isfield(cfg,'avgoverrpt')
+if ~isfield(cfg,'avgoverrpt') % average over trials
     cfg.avgoverrpt = 'yes';
+end
+
+if ~isfield(cfg,'itpcz') % transform ITPC to ITPCz
+    cfg.itpcz = 'no';
 end
 
 %% prepare output structure
@@ -37,6 +52,7 @@ end
 % select trials
 if ~strcmpi(cfg.trials,'all') % itpc on select trials
     dataSubset = data.fourierspctrm(cfg.trials,:,:,:);
+    disp(['Averaging ' num2str(length(cfg.trials)) ' trials']);
 else
     dataSubset = data.fourierspctrm;
 end
@@ -48,7 +64,7 @@ else % return single-trial data
     cfg.info = 'abs(mean(x.itpc,1)) to get mean itpc from single trial data';
 end
 
-if isfield(cfg,'itpc_rayleighZ') % transform ITPC to ITPCz (see Cohen, 2014, p.249)
+if strcmpi(cfg.itpcz,'yes') % transform ITPC to ITPCz (see Cohen, 2014, p.249)
     dataout.fourierspctrm = length(cfg.trials) .* (dataout.fourierspctrm.^2);
 end
 
