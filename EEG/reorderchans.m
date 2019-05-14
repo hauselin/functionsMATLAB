@@ -34,18 +34,25 @@ if showplot && sum([EEGout.chanlocs.X]) ~= 0
     figure(1029482)
     clf
     set(gcf,'name','Channel order','numbertitle','off')
-    subplot(231)
+    subplot(241)
     topoplot([],EEG.chanlocs, 'style', 'blank',  'electrodes', 'numpoint', 'chaninfo', EEG.chaninfo);
     title('Original location numbers')
-    subplot(232)
+    subplot(242)
     topoplot([],EEG.chanlocs, 'style', 'blank',  'electrodes', 'labelpoint', 'chaninfo', EEG.chaninfo);
     title('Original location labels')
     
-    subplot(233)
+    subplot(243)
     if ndims(EEG.data) == 2
         imagesc(squeeze(nanmean(EEG.data(:,1:10),2)))
     elseif ndims(EEG.data) == 3
         imagesc(squeeze(nanmean(EEG.data(:,1:10,1),2)))
+    end
+    
+    subplot(244)
+    if ndims(EEG.data) == 2
+        topoplotIndie(squeeze(nanmean(EEG.data(:,1:10),2)),EEG.chanlocs,'electrodes','on');
+    elseif ndims(EEG.data) == 3
+        topoplotIndie(squeeze(nanmean(EEG.data(:,1:10,1),2)),EEG.chanlocs,'electrodes','on');
     end
         
     title('Original chan mean activity')
@@ -90,23 +97,35 @@ else
 end 
 
 if showplot && sum([EEGout.chanlocs.X]) ~= 0 
-    subplot(234)
+    subplot(245)
     topoplot([],EEGout.chanlocs, 'style', 'blank',  'electrodes', 'numpoint', 'chaninfo', EEG.chaninfo);
     title('Sorted location numbers')
-    subplot(235)
+    subplot(246)
     topoplot([],EEGout.chanlocs, 'style', 'blank',  'electrodes', 'labelpoint', 'chaninfo', EEG.chaninfo);
     title('Sorted location labels')
     
-    subplot(236)
+    subplot(247)
     if ndims(EEG.data) == 2
         imagesc(squeeze(nanmean(EEGout.data(:,1:10),2)))
     elseif ndims(EEG.data) == 3
         imagesc(squeeze(nanmean(EEGout.data(:,1:10,1),2)))
     end
+    
+    subplot(248)
+    if ndims(EEG.data) == 2
+        topoplotIndie(squeeze(nanmean(EEGout.data(:,1:10),2)),EEGout.chanlocs,'electrodes','on');
+    elseif ndims(EEG.data) == 3
+        topoplotIndie(squeeze(nanmean(EEGout.data(:,1:10,1),2)),EEGout.chanlocs,'electrodes','on');
+    end
+    
     title('Sorted chan mean activity')
     colorbar
-    colormap parula
-    
+    try
+        colormap viridis
+    catch
+        colormap parula
+    end
+            
     set(gca,'ytick',1:EEG.nbchan,'yticklabel',{EEGout.chanlocs.labels},'xtick',1,'xticklabel','Mean amplitude (first 10 points)')
     set(findall(gcf,'-property','FontSize'),'FontSize',11)
     set(gcf,'units','normalized','outerposition',[0 0 1 1],'PaperPositionMode','auto','DefaultTextInterpreter','none','PaperOrientation','portrait'); % maximize figure

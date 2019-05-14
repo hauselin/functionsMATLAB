@@ -6,7 +6,7 @@
 %     x,y,z : x,y,z coordinates of electrode positions (e.g., [EEG.chanlocs.X])
 %
 % (optional inputs)
-% leg_order : order of Legendre polynomial (default is 50 [80 for >100 electrodes])
+% leg_order : order of Legendre polynomial (default is 20 [40 for >100 electrodes])
 % smoothing : G smoothing parameter (lambda), set to 1e-5 by default
 %
 %
@@ -38,9 +38,9 @@ cosdist=zeros(numelectrodes);
 
 % default parameters for +/- 100 electrodes
 if numelectrodes>100
-    m=3; leg_order=80;
+    m=3; leg_order=40;
 else
-    m=4; leg_order=50;
+    m=4; leg_order=20;
 end
 
 if numel(varargin)>0 && ~isempty(varargin{1})
@@ -81,8 +81,8 @@ for i=1:numelectrodes
         
         for ni=1:leg_order
             % compute G and H terms
-            g = g + (twoN1(ni)  *legpoly(ni,i,j)) / gdenom(ni);
-            h = h - (twoN1(ni)*2*legpoly(ni,i,j)) / hdenom(ni);
+            g = g + (twoN1(ni)*legpoly(ni,i,j)) / gdenom(ni);
+            h = h - (twoN1(ni)*legpoly(ni,i,j)) / hdenom(ni);
         end
         G(i,j) =  g/(4*pi);
         H(i,j) = -h/(4*pi);

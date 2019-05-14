@@ -39,7 +39,7 @@ else % select channels
     for chani = 1:length(cfg.chan)
        cfg.chanind(chani) = find(strcmpi({data.chanlocs.labels},cfg.chan{chani}));
     end
-    Y = squeeze(data.data(cfg.chanind,:,:));
+    Y = data.data(cfg.chanind,:,:);
 end
 
 if ~isfield(cfg,'times') % default all time points (in seconds)
@@ -72,8 +72,10 @@ end
 
 if strcmpi(cfg.intercept,'yes')
     designMatrix = [ones(size(cfg.designmatrix,1),1) cfg.designmatrix]; % add intercept/constant
+    regressors = [{'b0'} cfg.regressors];
 else
     designMatrix = cfg.designmatrix; % don't add intercept/constant
+    regressors = cfg.regressors;
 end
 
 %% Create structure to store output
@@ -167,10 +169,13 @@ elec.pnt = elec.pnt(cfg.chanind,:);
 elec.label = elec.label(1,cfg.chanind);
 
 dataout.cfg = cfg; % save regression parameters in structure
+dataout.regressors = regressors;
+dataout.designmat = designMatrix;
 dataout.time = cfg.times;
 dataout.dimord = 'chan_time';
 dataout.label = cfg.chan';
 dataout.elec = elec;
+dataout.chanloc = data.chanlocs(cfg.chanind);
 dataout.cfg.subject = data.subject;
 
 end

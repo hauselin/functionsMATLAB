@@ -1,4 +1,4 @@
-function [handle,pltchans,epos] = topoplotIndie(Values,chanlocs,varargin)
+function [handle,pltchans,epos,Zi] = topoplotIndie(Values,chanlocs,varargin)
 
 %% Set defaults
 
@@ -6,14 +6,14 @@ headrad = 0.5;          % actual head radius - Don't change this!
 GRID_SCALE = 67;        % plot map on a 67X67 grid
 CIRCGRID   = 201;       % number of angles to use in drawing circles
 HEADCOLOR = [0 0 0];    % default head color (black)
-HLINEWIDTH = 1.7;         % default linewidth for head, nose, ears
-BLANKINGRINGWIDTH = .035;% width of the blanking ring
-HEADRINGWIDTH    = .007;% width of the cartoon head ring
+HLINEWIDTH = 0.5;         % default linewidth for head, nose, ears
+BLANKINGRINGWIDTH = .035; % width of the blanking ring
+HEADRINGWIDTH    = .003; % width of the cartoon head ring
 plotrad = .6;
 Values = double(Values);
 SHADING = 'interp';
-CONTOURNUM = 6;
-ELECTRODES = 'on';
+CONTOURNUM = 0;
+ELECTRODES = 'off'; % on, labels, numbers
 
 nargs = nargin;
 if nargs > 2
@@ -39,6 +39,7 @@ end
 Values = Values(:); % make Values a column vector
 
 %% Read channel location
+
 labels={chanlocs.labels};
 Th=[chanlocs.theta];
 Rd=[chanlocs.radius];
@@ -174,14 +175,14 @@ plot3(-EarX*sf,EarY*sf,2*ones(size(EarY)),'color',HEADCOLOR,'LineWidth',HLINEWID
 
 %% Mark electrode locations
 if strcmp(ELECTRODES,'on')   % plot electrodes as spots
-    hp2 = plot3(y,x,ones(size(x)),'.','Color',[0 0 0],'markersize',5,'linewidth',.5,'hittest','off');
+    hp2 = plot3(y,x,ones(size(x)),'.','Color',[1 1 1],'markersize',5,'linewidth',.5,'hittest','off');
 elseif strcmp(ELECTRODES,'labels')  % print electrode names (labels)
     for i = 1:size(labels,1)
-        text(double(y(i)),double(x(i)),1,labels(i,:),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[0 0 0],'hittest','off')
+        text(double(y(i)),double(x(i)),1,labels(i,:),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[1 1 1],'hittest','off')
     end
 elseif strcmp(ELECTRODES,'numbers')
     for i = 1:size(labels,1)
-        text(double(y(i)),double(x(i)),1,int2str(allchansind(i)),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[0 0 0],'hittest','off')
+        text(double(y(i)),double(x(i)),1,int2str(allchansind(i)),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[1 1 1],'hittest','off')
     end
 end
 
@@ -189,3 +190,14 @@ epos=[x; y];
 axis off
 axis equal
 
+%% set colormap
+
+try
+    colormap viridis 
+catch
+   try
+       colormap parula
+   catch
+       colormap jet
+   end
+end
