@@ -35,11 +35,11 @@ if ~isfield(cfg,'Rdata')
 end
 
 if ~isfield(cfg,'components')
-    cfg.activationcomponents = 5; % default precomputes and plots top 5 components
-    cfg.timeseriescomponents = 5; 
+    cfg.components = 5; % default precomputes and plots top 5 components
+    cfg.timeseriescomponents = cfg.components;
 else
-    cfg.activationcomponents = cfg.components;
-    cfg.timeseriescomponents = cfg.components; 
+    cfg.components = max(3,cfg.components); % fewest components to plot is 3
+    cfg.timeseriescomponents = cfg.components;
 end
 
 if ~isfield(cfg,'plotfig')
@@ -140,7 +140,6 @@ evecs = evecs(:,sidx); % sort eigenvectors by eigenvalue
 
 %% normalize evecs such that magnitude/vector norm is 1
 
-% TODO: maybe move this section to before activation pattern section?
 % ensures component time series has similar amplitude as ERP 
 evecs = evecs./sqrt(sum(evecs.^2,1));
 % norm(evecs(:,1)) % should be 1
@@ -149,7 +148,7 @@ evecs = evecs./sqrt(sum(evecs.^2,1));
 
 % compute activation pattern/topography for each eigenvector (a = wS, where S is covariance matrix S)
 activationpatterns = [];
-if cfg.activationcomponents
+if cfg.components
     activationpatterns = zeros(cfg.data.nbchan,size(evecs,2));
     evecsignflip = zeros(1,size(evecs,2));
     for c=1:size(evecs,2)
@@ -188,7 +187,8 @@ if cfg.plotfig
     figure(cfg.plotfig); clf
     
     % plot eigenspectrum
-    subplot(3,cfg.activationcomponents,1:(cfg.activationcomponents-2))
+    subploteigspec = [1:cfg.components-2];
+    subplot(3,cfg.components,subploteigspec)
     plot(1:length(evalsprop),evalsprop,'s-','linew',1,'markersize',5,'markerfacecolor','k')
     set(gca,'xlim',[1 length(evalsprop)])
     ylabel('Variance explained'); title(['Eigenvalues']);
@@ -205,20 +205,20 @@ if cfg.plotfig
     end
     
     % plot input data topography
-    subplot(3,cfg.activationcomponents,cfg.activationcomponents-1)
+    subplot(3,cfg.components,subploteigspec(end)+1)
     tempdat = cfg.data.data(:,cfg.Swinidx(1):cfg.Swinidx(2),:);
     topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','labels');
     title({'GED S matrix data' [num2str(round(cfg.Swin(1))) '-' num2str(round(cfg.Swin(2)))]});
     colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     
     if isfield(cfg,'rawdata')
-        subplot(3,cfg.activationcomponents,cfg.activationcomponents)
+        subplot(3,cfg.components,subploteigspec(end)+2)
         tempdat = cfg.rawdata(:,cfg.Swinidx(1):cfg.Swinidx(2),:);
         topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','on');
         title('Data for component time series');
         colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     else
-        subplot(3,cfg.activationcomponents,cfg.activationcomponents)
+        subplot(3,cfg.components,subploteigspec(end)+2)
         tempdat = cfg.Rdata.data(:,cfg.Rwinidx(1):cfg.Rwinidx(2),:);
         topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','on');
         title({'GED R matrix data' [num2str(round(cfg.Rwin(1))) '-' num2str(round(cfg.Rwin(2)))]});
@@ -227,7 +227,7 @@ if cfg.plotfig
 
     % plot activation patterns/topography (a = wS)
     for i=1:cfg.components
-        subplot(3,cfg.activationcomponents,cfg.activationcomponents+i)
+        subplot(3,cfg.components,cfg.components+i) % second row
         topoplotIndie(activationpatterns(:,i),cfg.data.chanlocs,'electrodes','on');
         title([ 'Component ' num2str(i) ])
         colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
@@ -236,7 +236,7 @@ if cfg.plotfig
     
     % plot component time series (projections) (c = wX, where X is data matrix)
     for i=1:cfg.components
-        subplot(3,cfg.activationcomponents,2*cfg.activationcomponents+i)
+        subplot(3,cfg.components,2*cfg.components+i) % third row
         plot(cfg.data.times,timeseriescomponents(i,:));
         if isfield(cfg,'plottime')
             xlim([cfg.plottime(1) cfg.plottime(2)])
