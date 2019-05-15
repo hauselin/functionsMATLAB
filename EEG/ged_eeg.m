@@ -6,6 +6,8 @@ function [results] = ged_eeg(cfg)
 % 
 % Last modified by Hause Lin 12-05-19 5:13 PM hauselin@gmail.com
 
+%% display function parameters if no arguments provided
+
 if nargin == 0 % if no input provided, return function argument information
     disp('ged_eeg function parameters: ');
     struct('data','eeglab data struct',...
@@ -14,8 +16,7 @@ if nargin == 0 % if no input provided, return function argument information
         'Swin','S matrix time window',...
         'Rwin','R matrix time window',...
         'regularize','shrinkage/regularization (0 to 1; default 0)',...
-        'activationcomponents','number of activation components to compute',...
-        'timeseriescomponents','number of time series components to compute',...
+        'components','components to compute and plot (default = 5)',...
         'rawdata','data X for computing component time series (c = wX)',...
         'plotfig','plot results figure number (default: 0)',...
         'plottime','plot xlim for time series (default: [min max])',...
@@ -23,24 +24,34 @@ if nargin == 0 % if no input provided, return function argument information
     return
 end
 
-if ~isfield(cfg,'singletrial')
-    cfg.singletrial = 1;
+%% set up default values
+
+if ~isfield(cfg,'singletrial') 
+    cfg.singletrial = 1; % default computes single-trial covariance
 end
 
 if ~isfield(cfg,'Rdata')
     cfg.Rdata = cfg.data; % default computes S and R covariance matrices using the same data
 end
 
-if ~isfield(cfg,'plotfig')
-    cfg.plotfig = 0;
+if ~isfield(cfg,'components')
+    cfg.activationcomponents = 5; % default precomputes and plots top 5 components
+    cfg.timeseriescomponents = 5; 
+else
+    cfg.activationcomponents = cfg.components;
+    cfg.timeseriescomponents = cfg.components; 
 end
 
-if ~isfield(cfg,'verbose')
-    cfg.verbose = 0;
+if ~isfield(cfg,'plotfig')
+    cfg.plotfig = 0; % default don't plot
 end
 
 if ~isfield(cfg,'regularize')
-    cfg.regularize = 0;
+    cfg.regularize = 0; % default no regularization
+end
+
+if ~isfield(cfg,'verbose')
+    cfg.verbose = 0; 
 end
 
 %% get time indices for R and S matrices
@@ -58,14 +69,14 @@ if cfg.verbose
     disp(['Performing GED on ' num2str(cfg.Rdata.trials) ' trials (R matrix)']);
 end
 
+% compute channel-by-channel covariance
 [covR,covS] = deal(zeros(cfg.data.nbchan)); % initialize empty covariance matrices
-
 if cfg.singletrial % 
     if cfg.verbose
         disp('Computing single-trial covariance matrices...');
     end
     
-    if cfg.Rdata.trials == cfg.data.trials % if S and R matrices have same number of trials
+    if cfg.Rdata.trials == cfg.data.trials % if S and R matrices have same number of trials, only 1 loop needed
         for ti=1:cfg.data.trials % covariance matrix for each trial
             % R matrix
             tdat = squeeze(cfg.Rdata.data(:,cfg.Rwinidx(1):cfg.Rwinidx(2),ti)); 
@@ -108,42 +119,51 @@ else % covariance matrix on avg data
     covS = cov(tdat');
 end
 
+% apply shrinkage regularization to R matrix
 if cfg.regularize > 0
     covR = (1 - cfg.regularize) * covR + cfg.regularize * mean(eig(covR)) * eye(cfg.data.nbchan);
 end
 
-% sort eigenvectors
+% perform eigendecomposition
 [evecs,evals] = eig(covS,covR);
-if ~isreal(evals) % if return imaginary values, regularize shrink 1%
+if ~isreal(evals) % if returns imaginary values, regularize shrink 1%
     disp('Regularizing by 1% because eigendecomposition returned imaginary values!');
     cfg.regularize = 0.01;
     covR = (1 - cfg.regularize) * covR + cfg.regularize * mean(eig(covR)) * eye(cfg.data.nbchan);
     [evecs,evals] = eig(covS,covR);
 end
+
+% sort eigenvectors
 [evals,sidx] = sort(diag(evals),'descend');
-evecs = evecs(:,sidx);
-evalsprop = evals ./ sum(evals) * 100;
+evalsprop = evals ./ sum(evals) * 100; % proportion variance explained by each eigenvalue
+evecs = evecs(:,sidx); % sort eigenvectors by eigenvalue
 
-%% compute filter-forward model/activation pattern and flip sign
+%% normalize evecs such that magnitude/vector norm is 1
 
-% compute activation pattern/topography (a = wS, where S is covariance matrix S)
-activationpatterns = [];
-if cfg.activationcomponents
-    activationpatterns = zeros(cfg.data.nbchan,cfg.activationcomponents);
-    for c=1:cfg.activationcomponents
-        % compute activation pattern/topography (a = wS, where S is covariance matrix S)
-        activationpatterns(:,c) = evecs(:,c)'*covS; % get component
-        [~,idx] = max(abs(activationpatterns(:,c)));  % find max magnitude
-        activationpatterns(:,c) = activationpatterns(:,c)*sign(activationpatterns(idx,c)); % possible sign flip
-    end    
-end
-
-%% compute filter forward model and flip sign
-
-% normalize evecs such that magnitude is 1
+% TODO: maybe move this section to before activation pattern section?
 % ensures component time series has similar amplitude as ERP 
 evecs = evecs./sqrt(sum(evecs.^2,1));
 % norm(evecs(:,1)) % should be 1
+
+%% compute filter-forward model/activation pattern and flip sign
+
+% compute activation pattern/topography for each eigenvector (a = wS, where S is covariance matrix S)
+activationpatterns = [];
+if cfg.activationcomponents
+    activationpatterns = zeros(cfg.data.nbchan,size(evecs,2));
+    evecsignflip = zeros(1,size(evecs,2));
+    for c=1:size(evecs,2)
+        activationpatterns(:,c) = evecs(:,c)'*covS; % compute activation pattern/topography (a = wS, where S is covariance matrix S)
+        % flip eigenvector sign if necessary
+        [~,idx] = max(abs(activationpatterns(:,c)));  % find absolute max magnitude in activation pattern
+        evecsignflip(c) = sign(activationpatterns(idx,c));
+        evecs(:,c) = evecs(:,c) * evecsignflip(c); % possible sign flip
+        activationpatterns(:,c) = activationpatterns(:,c)*evecsignflip(c); % possible sign flip
+    end    
+end
+% note: we can also flip sign based on channel
+
+%% compute component time series
 
 % compute component time series (projections) (c = wX, where X is data matrix)
 timeseriescomponents = [];
@@ -189,37 +209,33 @@ if cfg.plotfig
     tempdat = cfg.data.data(:,cfg.Swinidx(1):cfg.Swinidx(2),:);
     topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','labels');
     title({'GED S matrix data' [num2str(round(cfg.Swin(1))) '-' num2str(round(cfg.Swin(2)))]});
-    colorbar
-    caxis([-max(abs(caxis)) max(abs(caxis))])
+    colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     
     if isfield(cfg,'rawdata')
         subplot(3,cfg.activationcomponents,cfg.activationcomponents)
         tempdat = cfg.rawdata(:,cfg.Swinidx(1):cfg.Swinidx(2),:);
         topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','on');
         title('Data for component time series');
-        colorbar
-        caxis([-max(abs(caxis)) max(abs(caxis))])
+        colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     else
         subplot(3,cfg.activationcomponents,cfg.activationcomponents)
         tempdat = cfg.Rdata.data(:,cfg.Rwinidx(1):cfg.Rwinidx(2),:);
         topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','on');
         title({'GED R matrix data' [num2str(round(cfg.Rwin(1))) '-' num2str(round(cfg.Rwin(2)))]});
-        colorbar
-        caxis([-max(abs(caxis)) max(abs(caxis))])
+        colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     end
 
     % plot activation patterns/topography (a = wS)
-    for i=1:cfg.activationcomponents
+    for i=1:cfg.components
         subplot(3,cfg.activationcomponents,cfg.activationcomponents+i)
         topoplotIndie(activationpatterns(:,i),cfg.data.chanlocs,'electrodes','on');
         title([ 'Component ' num2str(i) ])
-        % axis tight
-        caxis([-max(abs(caxis)) max(abs(caxis))])
-        colorbar
+        colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
+        
     end
     
     % plot component time series (projections) (c = wX, where X is data matrix)
-    for i=1:cfg.activationcomponents
+    for i=1:cfg.components
         subplot(3,cfg.activationcomponents,2*cfg.activationcomponents+i)
         plot(cfg.data.times,timeseriescomponents(i,:));
         if isfield(cfg,'plottime')
@@ -227,11 +243,10 @@ if cfg.plotfig
         else
             xlim([cfg.data.times(1) cfg.data.times(end)])
         end
-        xlabel('Time (s)')
+        xlabel('Time')
         if i == 1 
             ylabel('Amplitude');
         end
-        % axis tight
     end
     try
         colormap viridis
@@ -252,9 +267,9 @@ results.S = covS;
 results.evecs = evecs;
 results.evals = evals;
 results.evalsprop = evalsprop;
+results.evecsignflip = evecsignflip;
 results.activationpatterns = activationpatterns;
 results.timeseriescomponents = timeseriescomponents;
-% results.timeseriescomponents_singletrial = timeseriescomponents_singletrial;
 results.times = cfg.data.times;
 results.chanlocs = cfg.data.chanlocs;
 

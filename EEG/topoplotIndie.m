@@ -178,11 +178,11 @@ if strcmp(ELECTRODES,'on')   % plot electrodes as spots
     hp2 = plot3(y,x,ones(size(x)),'.','Color',[1 1 1],'markersize',5,'linewidth',.5,'hittest','off');
 elseif strcmp(ELECTRODES,'labels')  % print electrode names (labels)
     for i = 1:size(labels,1)
-        text(double(y(i)),double(x(i)),1,labels(i,:),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[1 1 1],'hittest','off')
+        text(double(y(i)),double(x(i)),1,labels(i,:),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[1 1 1],'hittest','off','fontsize',8)
     end
 elseif strcmp(ELECTRODES,'numbers')
     for i = 1:size(labels,1)
-        text(double(y(i)),double(x(i)),1,int2str(allchansind(i)),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[1 1 1],'hittest','off')
+        text(double(y(i)),double(x(i)),1,int2str(allchansind(i)),'HorizontalAlignment','center','VerticalAlignment','middle','Color',[1 1 1],'hittest','off','fontsize',8)
     end
 end
 
