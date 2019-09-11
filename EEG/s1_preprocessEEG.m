@@ -1,6 +1,6 @@
 function s1_preprocessEEG(subject)
 % s1_preprocessEEG
-% Plugins required: ERPLAB, ICLabel, Viewprops, icablinkmetrics
+% Plugins required: ERPLAB, ICLabel
 %
 % USAGE EXAMPLES
 % preprocessEEG('001')
@@ -8,7 +8,7 @@ function s1_preprocessEEG(subject)
 % The function takes only 1 input argument (character; e.g., '001').
 %
 % Written in MATLAB R2018b
-% Last modified by Hause Lin 09-05-19 8:51 PM hauselin@gmail.com
+% Last modified by Hause Lin 11-09-19 4:57 PM hauselin@gmail.com
 
 %% Specify paths
 
@@ -30,8 +30,9 @@ cfg = struct();
 
 % filter settings
 cfg.highPassForICA = 1; % high pass filter for ICA training only
+cfg.lowPassForICA = 40; % 
 cfg.highPass = 0.1; % actual high pass (for use after ICA decomposition)
-% cfg.lowPass = 40; % usually for ICA training only (maybe unnecessary anyway)
+% cfg.notchFilterForICA = 60;
 
 % trim/remove long sections of data without events (e.g., between-block breaks)
 cfg.minTimeThreshold = 5000; % minimum time (s) between two events
@@ -76,14 +77,14 @@ try
 
 load(fullfile(PATHS.rawdatadir,filetoread.name)); % read data    
 EEG.subject = subject;
-
+    
 %% Edit channels
 
 allChannels = {EEG.chanlocs.labels}; % all channel labels
 
-if ~isempty(cfg.eyeChan) % edit/rename eye/ocular channels to match BESA channel names
+if ~isempty(cfg.eyeChan) % rename eye/ocular channels to match BESA channel names
     for chanI = 1:length(cfg.eyeChan)
-        eyeChanIdx = find(strcmpi(cfg.eyeChan{chanI}, allChannels)); % get index of eye channel
+        eyeChanIdx = find(strcmpi(cfg.eyeChan{chanI},allChannels)); % get index of eye channel
         if isempty(eyeChanIdx) % if no index found, skip to next iteration
             % do nothing
         else
@@ -94,7 +95,7 @@ end
     
 % remove emg channels
 if ~isempty(cfg.emgChan)
-    toRemove = find(ismember(allChannels,cfg.emgChan));
+    toRemove = find(ismember(lower(allChannels),lower(cfg.emgChan)));
     toRemove = allChannels(toRemove); % channel labels to remove
     EEG = pop_select(EEG,'nochannel',toRemove); % remove EMG channels
     EEG = eeg_checkset(EEG);
@@ -112,11 +113,18 @@ EEGcopy = EEG;
 
 % highpass filter for ICA (1 Hz)
 EEG = pop_basicfilter(EEG,1:length(EEG.chanlocs),'Boundary','boundary','Cutoff',cfg.highPassForICA,'Design','butter','Filter','highpass','Order',2,'RemoveDC','on');
+% pop_fourieeg(EEG,1:length(EEG.chanlocs),[],'chanArray',1:length(EEG.chanlocs),'EndFrequency',100,'IncludeLegend',1, 'NumberOfPointsFFT',EEG.srate,'StartFrequency',0);
+
+% lowpass filter for ICA 
+EEG = pop_basicfilter(EEG,1:length(EEG.chanlocs),'Boundary','boundary','Cutoff',cfg.lowPassForICA,'Design','butter','Filter','lowpass','Order',2);
+
+% notch filter for ICA
+% EEG = pop_basicfilter(EEG,1:length(EEG.chanlocs),'Boundary','boundary','Cutoff',cfg.notchFilter,'Design','notch','Filter','PMnotch','Order',180); 
 
 % or bandpass filter for ICA?
 % EEG = pop_basicfilter(EEG,1:length(EEG.chanlocs),'Boundary','boundary','Cutoff',[cfg.highPassForICA cfg.lowPass],'Design','butter','Filter','bandpass','Order',2,'RemoveDC','on');
 
-% highpass filter for actual analyses (0.1 Hz)
+% low filter for actual analyses (0.1 Hz)
 EEGcopy = pop_basicfilter(EEGcopy,1:length(EEGcopy.chanlocs),'Boundary','boundary','Cutoff',cfg.highPass,'Design','butter','Filter','highpass','Order',2,'RemoveDC','on');
 
 %% Trim data using ERPLAB function
@@ -132,7 +140,7 @@ EEGcopy = pop_erplabDeleteTimeSegments(EEGcopy,'displayEEG',0,'endEventcodeBuffe
 EEG = pop_creabasiceventlist(EEG,'AlphanumericCleaning','on','BoundaryNumeric',{-99},'BoundaryString',{'boundary'});
 EEGcopy = pop_creabasiceventlist(EEGcopy,'AlphanumericCleaning','on','BoundaryNumeric',{-99},'BoundaryString',{'boundary'});
 
-%% Create dummy epochs for ICA 
+%% Create dummy epochs for ICA (only on EEG struct, not EEGcopy)
 
 % add dummy trigger for epoching
 for timeI = 1:(EEG.srate * cfg.epochDuration):EEG.pnts % for every epochDuration (in seconds), add dummy event
@@ -142,10 +150,31 @@ end
 EEG = eeg_checkset(EEG);
 pop_squeezevents(EEG); % summarize events (ERPLAB)
 
-% epoch data
+% epoch data (only epoch EEG, not EEGcopy because we want to retain continous data!
 EEG = pop_epoch(EEG,{9999},[0 cfg.epochDuration],'newname','temporary epochs','epochinfo', 'yes');
 
-%% Reject epochs with artifact before ICA
+%% Reject bad channels before ICA (on EEG and EEGcopy)
+
+try 
+    allChannels = {EEG.chanlocs.labels}; % all channel labels
+    channelsForArtifactDetection = find(~ismember(allChannels, {'SO1' 'SO2' 'IO1' 'IO2' 'LO1' 'LO2'})); % exclude these channels when detecting bad electrode
+    indelec = 0; % index of bad electrode
+    [EEG,indelec,measure] = pop_rejchan(EEG,'threshold',cfg.badChanThresholdSD,'measure','prob','norm','on','elec',channelsForArtifactDetection); % reject bad channels based on probability
+    if indelec ~= 0 % if bad channel detected, save information
+        badChannelIdx = channelsForArtifactDetection(indelec); % bad channel index
+        EEG.badchannel = allChannels(badChannelIdx); % bad channel name
+        EEG.comments = pop_comments(EEG.comments,'','Removed bad channels.',1);
+        
+        % remove bad channels from EEGcopy (continuous data)
+        EEGcopy = pop_select(EEGcopy,'nochannel',EEG.badchannel);
+        EEGcopy.comments = pop_comments(EEGcopy.comments,'','Removed bad channels.',1);
+        EEGcopy.badchannel = EEG.badchannel;
+    end
+catch
+    indelec = 0; % index of bad electrode
+end
+
+%% Reject epochs with artifact before ICA (only on EEG)
 
 % identify which channels to look for artifacts in
 allChannels = {EEG.chanlocs.labels}; % all channel labels
@@ -169,47 +198,21 @@ EEG = eeg_rejsuperpose(EEG,1,1,1,1,1,1,1,1); % update EEG.reject.rejglobal and E
 
 EEG = pop_rejepoch(EEG,EEG.reject.rejglobal,0);
 
-%% Reject bad channels before ICA
-
-try 
-    allChannels = {EEG.chanlocs.labels}; % all channel labels
-    channelsForArtifactDetection = find(~ismember(allChannels, {'SO1' 'SO2' 'IO1' 'IO2' 'LO1' 'LO2'})); % exclude these channels when detecting bad electrode
-    indelec = 0; % index of bad electrode
-    [EEG,indelec,measure] = pop_rejchan(EEG,'threshold',cfg.badChanThresholdSD,'measure','prob','norm','on','elec',channelsForArtifactDetection); % reject bad channels based on probability
-    if indelec ~= 0 % if bad channel detected, save information
-        badChannelIdx = channelsForArtifactDetection(indelec); % bad channel index
-        badChannelName = allChannels(badChannelIdx); % bad channel name
-        EEG.badchannel = badChannelName;
-        EEG.comments = pop_comments(EEG.comments,'','Removed bad channels.',1);
-    end
-catch
-    indelec = 0; % index of bad electrode
-end
-
-%% Run ICA
+%% Run ICA on epoched data
 
 % EEG = pop_runica(EEG,'extended',1,'icatype','runica'); % runica algorithm
 EEG = pop_runica(EEG,'icatype','jader','dataset',1);  % jade algorithm
 EEG = eeg_checkset(EEG);
 
-% save/transfer ICA weights
+% save/transfer ICA weights from epoched ICA-ed data to continuous (non-epoched) data
 EEGcopy.icawinv = EEG.icawinv;
 EEGcopy.icasphere = EEG.icasphere;
 EEGcopy.icaweights = EEG.icaweights;
 EEGcopy.icachansind = EEG.icachansind;
 % EEG.icaact = (EEG.icaweights*EEG.icasphere)*EEG.data(EEG.icachansind,:); % recompute ICA component channel activation/time-series
 
-EEG = EEGcopy;
-clear EEGcopy
-
-%% Remove bad channels in ICA-ed data
-
-% remove bad channel if there's any
-if indelec ~= 0
-    EEG = pop_select(EEG,'nochannel',badChannelName);
-    EEG.comments = pop_comments(EEG.comments,'','Removed bad channels.',1);
-    EEG.badchannel = badChannelName;
-end
+EEG = EEGcopy;  % overwrite EEG with EEGcopy (EEGcopy contains continuous, non-epoched data)
+clear EEGcopy 
 EEG.comments = pop_comments(EEG.comments,'','Performed ICA.',1);
 
 %% Label and mark artifact IC components
@@ -217,7 +220,7 @@ EEG.comments = pop_comments(EEG.comments,'','Performed ICA.',1);
 try % use iclabel to label components
     EEG = iclabel(EEG); % label ICA components
 end
-try % use icablinkmetrics to identify blink components
+try % use icablinkmetrics to identify blink components (time series matching)
     EEG.icaquant = icablinkmetrics(EEG,'ArtifactChannel',EEG.data(find(strcmp({EEG.chanlocs.labels},'SO2')),:),'Alpha',0.001, 'VisualizeData','False');
 end
 EEG.comments = pop_comments(EEG.comments,'','Marked artifact IC components',1);
