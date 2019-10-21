@@ -1,6 +1,12 @@
 function [cfg] = dipole_project(cfg)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+% diapole_project
+% 
+% requires emptyEEG.mat and leadfield matrix
+% emptyEEG.mat contains EEG and lf structures
+% lf structure projects 2004 dipoles/sources to 64 EEG scalp channels
+%
+% Written in MATLAB R2018b
+% Last modified by Hause Lin 19-10-06 12:40 hauselin@gmail.com
 
 if nargin == 0 % if no input provided, return function argument information
     disp('dipole_project function parameters: ');
