@@ -15,8 +15,8 @@ function s1_preprocessEEG(subject)
 % Change the paths below accordingly before you use this script!
 PATHS = struct();
 PATHS.cwd = pwd;
-PATHS.rawdatadir = '/Users/hause/Dropbox/Working Projects/Akina Physical Effort/Zaibas RewP study/DataRawMat/';
-PATHS.outputdir = '/Users/hause/Dropbox/Working Projects/Akina Physical Effort/Zaibas RewP study/DataPreprocessed/';
+PATHS.rawdatadir = '../DataRawMat/'; % directory/path to .mat files containing raw data
+PATHS.outputdir = '../DataPreprocessed/'; % directory/path for saving preprocessed data
 PATHS.log = fullfile(PATHS.cwd,'Log'); % creates a Log directory in your current directory
 
 % addpath to eeglab (in case)
@@ -43,7 +43,7 @@ cfg.badChanThresholdSD = 5; % SD cutoff for bad electrode detection
 
 cfg.eyeChan = {'veog1','veog2','heogL','heogR'}; % name of eye/ocular channels in data
 cfg.eyeChanBESA = {'SO2','IO2','LO1','LO2'}; % name of eye channels (BESA names) (make sure order matches cfg.eyeChan above!)
-cfg.emgChan = {'CorsOut','CorsIns','CORRins','CORRout','ZYGup','ZYGlow','COORins','COORout'}; % name of emg channels (to be removed in this preprocessing pipeline)
+cfg.emgChan = {'CorsOut','CorsIns','CORRins','CORRout','ZYGup','ZYGlow','COORins','COORout','Corr','Zygo'}; % name of emg channels (to be removed in this preprocessing pipeline)
 
 % dummy epoch duration for ICA (1 second is good!)
 cfg.epochDuration = 1; % epochs data into 1s windows to detect artifacts (and remove epochs) before ICA
@@ -61,13 +61,23 @@ if ~exist(PATHS.log)
     mkdir(PATHS.log);
 end
 
-filetoread = dir(fullfile(PATHS.rawdatadir,['*_' subject '.mat']));
+filetoread = dir(fullfile(PATHS.rawdatadir,['*' subject '.mat']));
 if length(filetoread) ~= 1 % if more or less than 1 matching file found, skip
     dlmwrite(fullfile(PATHS.log,['Error_check_rawData_' subject '.txt']), ['Subject ' subject '. Incorrect number of files in raw data directory.'], 'delimiter','');
     return
 end
 
 disp(['Preprocessing subject ' subject, ' with ICA now...']);
+
+%% See if it's necessary to repreprocess data
+
+previous_cleandata = load(fullfile(['../DataPreprocessed/' subject '_continuous_icaed.mat']));
+if isfield(previous_cleandata.EEG, 'badchannel')
+    disp(['RE-PREPROCESSING ' subject '!!!']);
+else
+    disp(['SKIP SUBJECT ' subject]);
+    return
+end
 
 %% Start preprocessing
 
