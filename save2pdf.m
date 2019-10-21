@@ -31,12 +31,15 @@ end
 if nargin<2 % if no directory provided, save in current directory
     directory = '.';
 end
+if ~exist(directory)
+    mkdir(directory)
+end
 pdfname = fullfile(directory,pdfname);
 if nargin<3
     handle = gcf;
 end
 if nargin<4
-    dpi = 100;
+    dpi = 150;
 end
 
 % Backup previous settings
