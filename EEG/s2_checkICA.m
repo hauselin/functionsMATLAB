@@ -1,11 +1,11 @@
 %% Check ICA components and remove blink components one subject at a time.
 % Ideally, you'd want to run this script section by section (not line by
 % line) if you want to get the most from the script. 
-% Last modified by Hause Lin 19-10-20 17:05 hauselin@gmail.com
+% Last modified by Hause Lin 19-10-22 13:03 hauselin@gmail.com
 
 clear
 clc, close all
-cd '/Users/hause/Dropbox/Working Projects/Food choice/Analysis/EEG/Scripts/'
+cd '.'
 
 %% Set up paths and read data
 
@@ -42,6 +42,7 @@ if cfg.plotICLabels
         pop_viewprops(EEG,0,1:size(EEG.icaact,1),{'freqrange',[2 70]},{},1,'ICLabel'); % plot all components
     end
 end
+colormap parula
 clc
 
 %% Check IC components metrics
@@ -64,7 +65,7 @@ disp(find(EEG.etc.ic_classification.ICLabel.classifications(:, 5) > 0.95 & EEG.e
 %% Temporarily remove ICA components; plot and compare results
 
 % specify components to remove
-EEG.componentsRemoved = [1 2 3 10];
+EEG.componentsRemoved = [1 2 ];
 EEG2 = pop_subcomp(EEG,EEG.componentsRemoved,0); % remove components
 
 % plot
@@ -119,9 +120,8 @@ if ~isempty(badchannelmanual)
    end
    EEG.comments = pop_comments(EEG.comments,'','Interpolated bad channels',1);
    disp('Finished interpolating');
-   save(fullfile(currentSubjectDirectory,'parameters',[EEG.subject 'badChannelManualRemove.mat']),'badchannelmanual');
 else
-    disp('No need to interpolate');
+    disp('No channels manually identified for interpolation');
 end
 
 % add and interpolate channels that have been removed prior to ICA
@@ -162,12 +162,13 @@ disp('Rereferenced to mastoids averaged');
 EEG = eeg_checkset(EEG);
 
 % final check
-scaleRange = 25;
-eegplot(EEG.data(1:EEG.nbchan,:,:),'srate',EEG.srate,'title','EEG cleaned and rereferenced','eloc_file',EEG.chanlocs,'spacing',scaleRange,'events',EEG.event,'position',[10 400 1000 800])
+% scaleRange = 25;
+% eegplot(EEG.data(1:EEG.nbchan,:,:),'srate',EEG.srate,'title','EEG cleaned and rereferenced','eloc_file',EEG.chanlocs,'spacing',scaleRange,'events',EEG.event,'position',[10 400 1000 800])
 
 %% Reorder channels
 
-newChanOrder = {'Fp1','Fpz','Fp2','F8','F4','Fz','F3','F7','FC3','FCz','FC4','C4','Cz','C3','FT7','T3','FT8','T4','CP4','CPz','CP3','P3','Pz','P4','TP8','T6','TP7','T5','O1','Oz','O2','M1','M2','SO2','IO2','LO1','LO2'};
+% elements newChanOrder should be changed to match existing channel names
+newChanOrder = {'Fp1','Fpz','Fp2','F8','F4','Fz','F3','F7','FC3','FCz','FC4','C4','Cz','C3','FT7','T3','FT8','T4','CP4','CPz','CP3','P3','Pz','P4','TP8','T6','TP7','T5','O1','Oz','O2','M1','M2','SO2','IO2'};
 EEG = reorderchans(EEG,newChanOrder,true);
 EEG = eeg_checkset(EEG);
 disp('Reordered channels.');
