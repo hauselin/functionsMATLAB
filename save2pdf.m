@@ -39,7 +39,7 @@ if nargin<3
     handle = gcf;
 end
 if nargin<4
-    dpi = 150;
+    dpi = 300;
 end
 
 % Backup previous settings

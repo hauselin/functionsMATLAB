@@ -4,7 +4,7 @@ function [results] = ged_eeg(cfg)
 % 
 % Type the function name without any inputs to get parameter information
 % 
-% Last modified by Hause Lin 12-05-19 5:13 PM hauselin@gmail.com
+% Last modified by Hause Lin 19-10-22 22:07 hauselin@gmail.com
 
 %% display function parameters if no arguments provided
 
@@ -15,6 +15,7 @@ if nargin == 0 % if no input provided, return function argument information
         'singletrial','single-trial covariance (1 or 0; default: 1, yes)',...
         'Swin','S matrix time window',...
         'Rwin','R matrix time window',...
+        'singletrialvariable','single trial variable (length must match number of epochs; S and R matrices must be identical)',...
         'regularize','shrinkage/regularization (0 to 1; default 0)',...
         'components','components to compute and plot (default = 5)',...
         'rawdata','data X for computing component time series (c = wX)',...
@@ -32,6 +33,10 @@ end
 
 if ~isfield(cfg,'Rdata')
     cfg.Rdata = cfg.data; % default computes S and R covariance matrices using the same data
+end
+
+if isfield(cfg,'singletrialvariable')
+    disp('do stuff');
 end
 
 if ~isfield(cfg,'components')
@@ -188,7 +193,7 @@ if cfg.plotfig
     
     % plot eigenspectrum
     subploteigspec = [1:cfg.components-2];
-    subplot(3,cfg.components,subploteigspec)
+    subplot(3,cfg.components,1)
     plot(1:length(evalsprop),evalsprop,'s-','linew',1,'markersize',5,'markerfacecolor','k')
     set(gca,'xlim',[1 length(evalsprop)])
     ylabel('Variance explained'); title(['Eigenvalues']);
@@ -208,7 +213,7 @@ if cfg.plotfig
     subplot(3,cfg.components,subploteigspec(end)+1)
     tempdat = cfg.data.data(:,cfg.Swinidx(1):cfg.Swinidx(2),:);
     topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','labels');
-    title({'GED S matrix data' [num2str(round(cfg.Swin(1))) '-' num2str(round(cfg.Swin(2)))]});
+    title({'S matrix data' [num2str(round(cfg.Swin(1))) '-' num2str(round(cfg.Swin(2)))]});
     colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     
     if isfield(cfg,'rawdata')
@@ -221,7 +226,7 @@ if cfg.plotfig
         subplot(3,cfg.components,subploteigspec(end)+2)
         tempdat = cfg.Rdata.data(:,cfg.Rwinidx(1):cfg.Rwinidx(2),:);
         topoplotIndie(squeeze(mean(mean(tempdat,2),3)),cfg.data.chanlocs,'electrodes','on');
-        title({'GED R matrix data' [num2str(round(cfg.Rwin(1))) '-' num2str(round(cfg.Rwin(2)))]});
+        title({'R matrix data' [num2str(round(cfg.Rwin(1))) '-' num2str(round(cfg.Rwin(2)))]});
         colorbar; caxis([-max(abs(caxis)) max(abs(caxis))])
     end
 

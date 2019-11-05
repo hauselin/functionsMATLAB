@@ -14,20 +14,17 @@ if ~exist(cfg.matdatadir)
 end
 
 files = dir(fullfile(cfg.rawdatadir,'*.cnt'));
-% if length(files) < 1
-%     filestomove = dir(fullfile(cfg.rawdatadir,'Excluded data', '*', 'raw', 'Hause*'))
-%     for f=1:length(filestomove)
-%         movefile(fullfile(filestomove(f).folder, filestomove(f).name), fullfile(cfg.rawdatadir, filestomove(f).name));
-%     end
-%     files = dir(fullfile(cfg.rawdatadir,'*.cnt'));
-% end
     
-
 for f=1:length(files)
-    disp(['Converting ' files(f).name]);
-    EEG = pop_loadeep_v4(fullfile(cfg.rawdatadir,files(f).name));
-    save(fullfile(cfg.matdatadir,strrep(files(f).name,'.cnt','.mat')),'EEG');
-    clear EEG
+    outputfile = fullfile(cfg.matdatadir,strrep(files(f).name,'.cnt','.mat'));
+    if ~exist(outputfile)
+        disp(['Converting ' files(f).name]);
+        EEG = pop_loadeep_v4(fullfile(cfg.rawdatadir,files(f).name));
+        save(outputfile,'EEG');
+        clear EEG
+    else
+        disp(['Output file already exists: ' outputfile]);
+    end
 end
 
 end
