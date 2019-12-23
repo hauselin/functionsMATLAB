@@ -71,13 +71,13 @@ disp(['Preprocessing subject ' subject, ' with ICA now...']);
 
 %% See if it's necessary to repreprocess data
 
-previous_cleandata = load(fullfile(['../DataPreprocessed/' subject '_continuous_icaed.mat']));
-if isfield(previous_cleandata.EEG, 'badchannel')
-    disp(['RE-PREPROCESSING ' subject '!!!']);
-else
-    disp(['SKIP SUBJECT ' subject]);
-    return
-end
+% previous_cleandata = load(fullfile(['../DataPreprocessed/' subject '_continuous_icaed.mat']));
+% if isfield(previous_cleandata.EEG, 'badchannel')
+%     disp(['RE-PREPROCESSING ' subject '!!!']);
+% else
+%     disp(['SKIP SUBJECT ' subject]);
+%     return
+% end
 
 %% Start preprocessing
 
