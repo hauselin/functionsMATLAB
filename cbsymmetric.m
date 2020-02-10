@@ -1,4 +1,4 @@
-function [cl] = cbsymmetric(x)
+function [cl] = cbsymmetric(x)  % symmetric colorbar
 colorbar
 if nargin == 1
     caxis([-x x]);
